@@ -67,6 +67,7 @@ void draw_cpu (void)
 		error ("failed to create thread for calculating cpu usage");
 
 	mvprintw (1, 2, "CPU: %5.1lf%%", cpu_usage);
+	clrtoeol ();
 }
 
 void read_cpu (void)
@@ -92,6 +93,7 @@ void draw_mem (void)
 {
 	read_mem ();
 	mvprintw (3, 2, "Memory: %5.1lf%% (%ld kB / %ld kB)", mem_usage, memused, memtotal);
+	clrtoeol ();
 }
 
 void read_mem (void)
@@ -147,10 +149,10 @@ void draw_diskio (void)
 
 	mvaddstr (5, 2, "Disk I/O:");
 	for (d = disks.head, i = 0; d != NULL; d = d->next, i += 4) {
-		mvprintw (7 + i, 6, "- %s", d->name);
-		mvprintw (8 + i, 10,  "read:  %.1lf kB/sec", d->rkbps);
-		mvprintw (9 + i, 10,  "write: %.1lf kB/sec", d->wkbps);
-		mvprintw (10 + i, 10, "total: %.1lf kB/sec", d->totalkbps);
+		mvprintw (7 + i, 6, "- %s", d->name); clrtoeol ();
+		mvprintw (8 + i, 10,  "read:  %.1lf kB/sec", d->rkbps); clrtoeol ();
+		mvprintw (9 + i, 10,  "write: %.1lf kB/sec", d->wkbps); clrtoeol ();
+		mvprintw (10 + i, 10, "total: %.1lf kB/sec", d->totalkbps); clrtoeol ();
 	}
 }
 
