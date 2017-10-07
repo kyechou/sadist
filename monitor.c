@@ -10,6 +10,20 @@
 #define INTERVAL 2000	/* update every 2 sec */
 #define CPU_INT  1000000	/* wait 1 sec to read cpu usage */
 
+int	NCPU;
+
+long	memtotal;	/* MemTotal */
+long	memfree;	/* MemFree */
+long	membuffers;	/* Buffers */
+long	memcached;	/* Cached */
+long	memshmem;	/* Shmem */
+long	memsreclaim;	/* SReclaimable */
+long	memused;	/* memtotal - memfree - membuffers - memcached - memsreclaim + memshmem */
+double	mem_usage;	/* memused / memtotal * 100 */
+double	cpu_usage;	/* (working time) / (working time + idle time) * 100 */
+double	diskio_usage;	/* disk IO utilization */
+double	load[3];	/* CPU load */
+
 int main (void)
 {
 	int	c;
@@ -56,6 +70,11 @@ void draw (void)
 	if (pthread_create (&cpu_thread, NULL, (void *(*)(void *)) &draw_cpu, NULL) != 0)
 		error ("failed to create thread for calculating cpu usage");
 	draw_mem ();
+	draw_diskio ();
+}
+
+void draw_diskio (void)
+{
 }
 
 void draw_cpu (void)
