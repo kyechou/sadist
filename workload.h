@@ -7,6 +7,12 @@
 
 #define INTERVAL 1200000	/* refresh screen every 1.2 sec */
 
+/* mode constants */
+#define M_NORMAL	(-1)
+#define M_CPU		0
+#define M_MEM		1
+#define M_DISKIO	2
+
 void error (const char *);	/* report error and quit */
 
 #endif

@@ -6,20 +6,25 @@
 #include <pthread.h>
 #undef _GNU_SOURCE
 #include <signal.h>
+#include <ctype.h>
 #include "workload.h"
 
 static const char usage[] =
-"Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]\n\n"
+"Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]\n"
+"                  [-c cpu_workload] [-m mem_workload] [-d disk_IO_workload]\n\n"
 "Options:\n"
 "        -h      show this message\n"
-"        -r      specify the max reading rate of the disk\n"
-"        -w      specify the max writing rate of the disk\n"
-"        -t      specify the total max IO rate of the disk\n\n";
+"        -r      the max reading rate of the disk\n"
+"        -w      the max writing rate of the disk\n"
+"        -t      the max total IO rate of the disk\n"
+"        -c      the percentage of additional workload on CPU (0-100)\n"
+"        -m      the percentage of additional workload on memory (0-100)\n"
+"        -d      the percentage of additional workload on disk (0-100)\n\n";
 
-int		NCPU;
 pthread_t	display_thread;
 double		maxrkbps, maxwkbps, maxtotalkbps;
-double		cpu_wl, mem_wl, diskio_wl;
+int		mode;
+double		workload[3];
 
 static inline void mon_init (void);
 static inline void mon_fin (void);
@@ -27,6 +32,7 @@ static inline int parse_args (int, char **);
 static void display (void);	/* display the screen with refreshing rate */
 static void draw (void);
 static void winch_handler (int);
+static void input (double);
 
 int main (int argc, char **argv)
 {
@@ -39,8 +45,46 @@ int main (int argc, char **argv)
 	mon_init ();
 
 	while ((c = getch ()) != ERR) {
-		if (c == 'q' || c == '')
+		c = tolower (c);
+		switch (c) {
+		case 'q':
+		case '':
+			error (NULL);
+		case 'j':
+			input (-1);
 			break;
+		case 'k':
+			input (1);
+			break;
+		case 'h':
+			input (-10);
+			break;
+		case 'l':
+			input (10);
+			break;
+		case '0':
+			input (0);
+			break;
+		case 'c':
+			if (mode == M_NORMAL)
+				mode = M_CPU;
+			break;
+		case 'm':
+			if (mode == M_NORMAL)
+				mode = M_MEM;
+			break;
+		case 'd':
+			if (mode == M_NORMAL)
+				mode = M_DISKIO;
+			break;
+		case '':
+			if (mode != M_NORMAL)
+				mode = M_NORMAL;
+			break;
+		default:
+			continue;
+		}
+		draw ();
 	}
 
 	/* finalize monitor */
@@ -49,39 +93,17 @@ int main (int argc, char **argv)
 	return 0;
 }
 
-static inline int parse_args (int argc, char **argv)
+static void input (double delta)
 {
-	int c;
-
-	while ((c = getopt (argc, argv, "hr:w:t:c:m:d:")) != -1) {
-		switch (c) {
-		case 'r':
-			maxrkbps = atof (optarg);
-			break;
-		case 'w':
-			maxwkbps = atof (optarg);
-			break;
-		case 't':
-			maxtotalkbps = atof (optarg);
-			break;
-		case 'c':
-			cpu_wl = atof (optarg);
-			break;
-		case 'm':
-			mem_wl = atof (optarg);
-			break;
-		case 'd':
-			diskio_wl = atof (optarg);
-			break;
-		case 'h':
-		case '?':
-		default:
-			fputs (usage, stderr);
-			return 1;
-		}
+	if (mode == M_NORMAL)
+		return;
+	if (delta == 0) {
+		workload[mode] = 0;
+		return;
 	}
-
-	return 0;
+	if (workload[mode] + delta < 0 || workload[mode] + delta > 100)
+		return;
+	workload[mode] += delta;
 }
 
 static void draw (void)
@@ -92,6 +114,8 @@ static void draw (void)
 	clear ();
 	getmaxyx (stdscr, max_r, max_c);
 
+	mvaddstr (r, 1, "---------------------------------------------------------");
+	r += 2;
 	mvprintw (r, 2, "CPU: %5.1lf%%", cpu_usage);
 	r += 2;
 	mvprintw (r, 2, "Memory: %5.1lf%% (%ld kB / %ld kB)", mem_usage, memused, memtotal);
@@ -111,15 +135,31 @@ static void draw (void)
 			printw (" (%.1lf%%)", d->totalkbps / maxtotalkbps * 100.0);
 	}
 	r += 2;
-	mvaddstr (r, 2, "*");
-	r += 5;
-	mvprintw (r, 2, "CPU workload:      +%.1lf%%", cpu_wl);
+	mvaddstr (r, 1, "---------------------------------------------------------");
 	r += 2;
-	mvprintw (r, 2, "Memory workload:   +%.1lf%%", mem_wl);
+	mvprintw (r, 2, "CPU workload:      +%.1lf%%", workload[M_CPU]);
 	r += 2;
-	mvprintw (r, 2, "Disk I/O workload: +%.1lf%%", diskio_wl);
+	mvprintw (r, 2, "Memory workload:   +%.1lf%%", workload[M_MEM]);
+	r += 2;
+	mvprintw (r, 2, "Disk I/O workload: +%.1lf%%", workload[M_DISKIO]);
+	r += 2;
+	mvaddstr (r, 1, "---------------------------------------------------------");
 
 	mvaddstr (max_r - 2, 2, "q: Quit");
+	switch (mode) {
+	case M_NORMAL:
+		addstr ("   c: CPU   m: Memory   d: Disk");
+		break;
+	case M_CPU:
+		addstr ("   Esc: Back   h: -10%   j: -1%   k: +1%   l: +10%   0: 0%");
+		break;
+	case M_MEM:
+		addstr ("   Esc: Back   h: -10%   j: -1%   k: +1%   l: +10%   0: 0%");
+		break;
+	case M_DISKIO:
+		addstr ("   Esc: Back   h: -10%   j: -1%   k: +1%   l: +10%   0: 0%");
+		break;
+	}
 
 	refresh ();
 }
@@ -133,6 +173,50 @@ static void display (void)
 		draw ();
 		usleep (INTERVAL);
 	}
+}
+
+static inline int parse_args (int argc, char **argv)
+{
+	int c;
+
+	while ((c = getopt (argc, argv, "hr:w:t:c:m:d:")) != -1) {
+		switch (c) {
+		case 'r':
+			maxrkbps = atof (optarg);
+			break;
+		case 'w':
+			maxwkbps = atof (optarg);
+			break;
+		case 't':
+			maxtotalkbps = atof (optarg);
+			break;
+		case 'c':
+			workload[M_CPU] = atof (optarg);
+			break;
+		case 'm':
+			workload[M_MEM] = atof (optarg);
+			break;
+		case 'd':
+			workload[M_DISKIO] = atof (optarg);
+			break;
+		case 'h':
+		case '?':
+		default:
+			fputs (usage, stderr);
+			return 1;
+		}
+	}
+
+	if (maxrkbps < 0 || maxwkbps < 0 || maxtotalkbps < 0
+		|| workload[M_CPU] < 0 || workload[M_CPU] > 100
+		|| workload[M_MEM] < 0 || workload[M_MEM] > 100
+		|| workload[M_DISKIO] < 0 || workload[M_DISKIO] > 100) {
+		fputs ("[Error] invalid argument\n", stderr);
+		fputs (usage, stderr);
+		return 1;
+	}
+
+	return 0;
 }
 
 static void winch_handler (int sig)
@@ -150,7 +234,11 @@ void error (const char *s)
 
 static inline void mon_init (void)
 {
-	NCPU = sysconf(_SC_NPROCESSORS_ONLN);
+	mode = M_NORMAL;
+
+	/* set ESCDELAY to make it respond immediately */
+	if (putenv ("ESCDELAY=10") != 0)
+		error ("failed to set environment variable ESCDELAY");
 
 	/* start curses mode */
 	initscr ();
