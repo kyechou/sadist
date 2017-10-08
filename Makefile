@@ -17,9 +17,6 @@ workload: $(OBJS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 run: all
-	@./workload
-
-run-disk: all
 	@./workload -t 105481.40
 
 clean: tags

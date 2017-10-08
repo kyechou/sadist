@@ -8,10 +8,6 @@
 #include <signal.h>
 #include "workload.h"
 
-int		NCPU;
-pthread_t	display_thread;
-double		maxrkbps, maxwkbps, maxtotalkbps;
-
 static const char usage[] =
 "Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]\n\n"
 "Options:\n"
@@ -20,8 +16,14 @@ static const char usage[] =
 "        -w      specify the max writing rate of the disk\n"
 "        -t      specify the total max IO rate of the disk\n\n";
 
+int		NCPU;
+pthread_t	display_thread;
+double		maxrkbps, maxwkbps, maxtotalkbps;
+double		cpu_wl, mem_wl, diskio_wl;
+
 static inline void mon_init (void);
 static inline void mon_fin (void);
+static inline int parse_args (int, char **);
 static void display (void);	/* display the screen with refreshing rate */
 static void draw (void);
 static void winch_handler (int);
@@ -30,26 +32,8 @@ int main (int argc, char **argv)
 {
 	int	c;
 
-	/* parse options */
-	while ((c = getopt (argc, argv, "hr:w:t:")) != -1) {
-		switch (c) {
-		case 'r':
-			maxrkbps = atof (optarg);
-			break;
-		case 'w':
-			maxwkbps = atof (optarg);
-			break;
-		case 't':
-			maxtotalkbps = atof (optarg);
-			break;
-		case 'h':
-		case '?':
-			fputs (usage, stderr);
-			return 0;
-		default:
-			return -1;
-		}
-	}
+	if (parse_args (argc, argv))
+		return 1;
 
 	/* initialize monitor */
 	mon_init ();
@@ -61,6 +45,41 @@ int main (int argc, char **argv)
 
 	/* finalize monitor */
 	mon_fin ();
+
+	return 0;
+}
+
+static inline int parse_args (int argc, char **argv)
+{
+	int c;
+
+	while ((c = getopt (argc, argv, "hr:w:t:c:m:d:")) != -1) {
+		switch (c) {
+		case 'r':
+			maxrkbps = atof (optarg);
+			break;
+		case 'w':
+			maxwkbps = atof (optarg);
+			break;
+		case 't':
+			maxtotalkbps = atof (optarg);
+			break;
+		case 'c':
+			cpu_wl = atof (optarg);
+			break;
+		case 'm':
+			mem_wl = atof (optarg);
+			break;
+		case 'd':
+			diskio_wl = atof (optarg);
+			break;
+		case 'h':
+		case '?':
+		default:
+			fputs (usage, stderr);
+			return 1;
+		}
+	}
 
 	return 0;
 }
@@ -91,6 +110,14 @@ static void draw (void)
 		if (maxtotalkbps)
 			printw (" (%.1lf%%)", d->totalkbps / maxtotalkbps * 100.0);
 	}
+	r += 2;
+	mvaddstr (r, 2, "*");
+	r += 5;
+	mvprintw (r, 2, "CPU workload:      +%.1lf%%", cpu_wl);
+	r += 2;
+	mvprintw (r, 2, "Memory workload:   +%.1lf%%", mem_wl);
+	r += 2;
+	mvprintw (r, 2, "Disk I/O workload: +%.1lf%%", diskio_wl);
 
 	mvaddstr (max_r - 2, 2, "q: Quit");
 
