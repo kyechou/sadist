@@ -3,7 +3,10 @@
 
 CFLAGS  += -O2 -lncurses -lpthread
 LDFLAGS += -Wl,--gc-sections -lncurses -lpthread
-OBJS = monitor.o
+OBJS = monitor.o \
+       cpu.o \
+       mem.o \
+       diskio.o
 
 all: tags monitor
 
@@ -22,4 +25,4 @@ clean: tags
 tags:
 	-@ctags -R
 
-.PHONY: all run clean
+.PHONY: all run clean tags
