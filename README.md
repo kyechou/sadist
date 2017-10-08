@@ -69,3 +69,7 @@ IO utilization is also run in a POSIX thread.
 If one or more of the options (`-r`, `-w`, or `-t`) are given, the monitor will
 show the percentage of the respective disk utilization on the screen.
 
+My maximum disk IO rate (105481.40 kB/s) is calculated from the output of my
+monitor, and averaged from the 20 highest IO rates with the command `sort -gr |
+head -n20 | paste -sd+ - | sed -e 's/^/\(/' -e 's/$/\)\/20/' | bc -l`.
+

@@ -19,6 +19,9 @@ monitor: $(OBJS)
 run: all
 	@./monitor
 
+run-disk: all
+	@./monitor -t 105481.40
+
 clean: tags
 	-@rm -rf $(OBJS) monitor
 
