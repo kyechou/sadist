@@ -5,9 +5,10 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 #undef _GNU_SOURCE
+#include <signal.h>
 #include "monitor.h"
 
-#define INTERVAL   1500		/* update every 1.5 sec */
+#define INTERVAL   1000000	/* update every 1 sec */
 #define CPU_INT    1000000	/* wait 1 sec to read cpu usage */
 #define DISKIO_INT 1000000	/* wait 1 sec to read disk usage */
 #define DISKSTATS_BUF 1024	/* buffer size when reading /proc/diskstats */
@@ -25,6 +26,8 @@ double		mem_usage;	/* memused / memtotal * 100 */
 double		cpu_usage;	/* (working time) / (working time + idle time) * 100 */
 struct disks_t	disks = { NULL, NULL };
 
+pthread_t	display_thread, cpu_thread, diskio_thread;
+
 int main (void)
 {
 	int	c;
@@ -37,14 +40,13 @@ int main (void)
 	raw ();			/* terminal raw mode */
 	keypad (stdscr, TRUE);	/* enable keypad */
 	noecho ();		/* no echo */
-	timeout (INTERVAL);	/* input blocking for INTERVAL milliseconds */
+	//timeout (INTERVAL);	/* input blocking for INTERVAL milliseconds */
+
+	/* create a thread displaying the screen */
+	if (pthread_create (&display_thread, NULL, (void *(*)(void *)) &display, NULL) != 0)
+		error ("failed to create thread for display");
 
 	while (1) {
-		draw_cpu ();
-		draw_mem ();
-		draw_diskio ();
-		refresh ();
-
 		c = getch ();
 		if (c == 'q' || c == '')
 			break;
@@ -54,16 +56,28 @@ int main (void)
 
 	/* end curses mode */
 	endwin ();
+	pthread_kill (display_thread, SIGTERM);
+	pthread_kill (cpu_thread, SIGTERM);
+	pthread_kill (diskio_thread, SIGTERM);
 	free_disks ();
 
 	return 0;
 }
 
+void display (void)
+{
+	while (1) {
+		draw_cpu ();
+		draw_mem ();
+		draw_diskio ();
+		refresh ();
+		usleep (INTERVAL);
+	}
+}
+
 void draw_cpu (void)
 {
-	static pthread_t	thread;
-
-	if (pthread_create (&thread, NULL, (void *(*)(void *)) &read_cpu, NULL) != 0)
+	if (pthread_create (&cpu_thread, NULL, (void *(*)(void *)) &read_cpu, NULL) != 0)
 		error ("failed to create thread for calculating cpu usage");
 
 	mvprintw (1, 2, "CPU: %5.1lf%%", cpu_usage);
@@ -140,11 +154,10 @@ void read_mem (void)
 
 void draw_diskio (void)
 {
-	static pthread_t	thread;
 	struct disk_t		*d;
 	int			i;
 
-	if (pthread_create (&thread, NULL, (void *(*)(void *)) &read_diskio, NULL) != 0)
+	if (pthread_create (&diskio_thread, NULL, (void *(*)(void *)) &read_diskio, NULL) != 0)
 		error ("failed to create thread for calculating diskio usage");
 
 	mvaddstr (5, 2, "Disk I/O:");
@@ -240,6 +253,9 @@ void free_disks (void)
 void error (const char *s)
 {
 	endwin();
+	pthread_kill (display_thread, SIGTERM);
+	pthread_kill (cpu_thread, SIGTERM);
+	pthread_kill (diskio_thread, SIGTERM);
 	free_disks ();
 	if (s)
 		fprintf (stderr, "[Error] %s\n", s);

@@ -16,6 +16,7 @@ struct disks_t {
 };
 
 void	error (const char *);	/* report error and quit */
+void	display (void);		/* display the screen with refreshing rate */
 
 void	draw_cpu (void);	/* draw the CPU utilization */
 void	read_cpu (void);	/* blocking; running with pthread */
