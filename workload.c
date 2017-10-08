@@ -6,14 +6,14 @@
 #include <pthread.h>
 #undef _GNU_SOURCE
 #include <signal.h>
-#include "monitor.h"
+#include "workload.h"
 
 int		NCPU;
 pthread_t	display_thread;
 double		maxrkbps, maxwkbps, maxtotalkbps;
 
 static const char usage[] =
-"Usage: ./monitor [-h] [-r max_read] [-w max_write] [-t max_total]\n\n"
+"Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]\n\n"
 "Options:\n"
 "        -h      show this message\n"
 "        -r      specify the max reading rate of the disk\n"

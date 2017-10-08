@@ -3,7 +3,7 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 #undef _GNU_SOURCE
-#include "monitor.h"
+#include "workload.h"
 
 double cpu_usage;	/* (working time) / (working time + idle time) * 100 */
 static pthread_t cpu_thread;

@@ -1,5 +1,5 @@
-#ifndef __MONITOR_H
-#define __MONITOR_H
+#ifndef __WORKLOAD_H
+#define __WORKLOAD_H
 
 #include "cpu.h"
 #include "mem.h"

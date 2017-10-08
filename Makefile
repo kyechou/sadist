@@ -3,27 +3,27 @@
 
 CFLAGS  += -O2 -lncurses -lpthread
 LDFLAGS += -Wl,--gc-sections -lncurses -lpthread
-OBJS = monitor.o \
+OBJS = workload.o \
        cpu.o \
        mem.o \
        diskio.o
 
-all: tags monitor
+all: tags workload
 
-monitor: $(OBJS)
+workload: $(OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 run: all
-	@./monitor
+	@./workload
 
 run-disk: all
-	@./monitor -t 105481.40
+	@./workload -t 105481.40
 
 clean: tags
-	-@rm -rf $(OBJS) monitor
+	-@rm -rf $(OBJS) workload
 
 tags:
 	-@ctags -R

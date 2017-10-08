@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "monitor.h"
+#include "workload.h"
 
 unsigned long	memtotal;	/* MemTotal */
 unsigned long	memused;	/* memtotal - memfree - membuffers - memcached - memsreclaim + memshmem */

@@ -4,7 +4,7 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 #undef _GNU_SOURCE
-#include "monitor.h"
+#include "workload.h"
 
 struct disks_t	disks = { NULL, NULL };
 static pthread_t	diskio_thread;
