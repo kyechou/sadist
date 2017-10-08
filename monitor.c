@@ -10,51 +10,57 @@
 
 int		NCPU;
 pthread_t	display_thread;
+double		maxrkbps, maxwkbps, maxtotalkbps;
 
-static inline void init (void);
-static inline void fin (void);
+static const char usage[] =
+"Usage: ./monitor [-h] [-r max_read] [-w max_write] [-t max_total]\n\n"
+"Options:\n"
+"        -h      show this message\n"
+"        -r      specify the max reading rate of the disk\n"
+"        -w      specify the max writing rate of the disk\n"
+"        -t      specify the total max IO rate of the disk\n\n";
+
+static inline void mon_init (void);
+static inline void mon_fin (void);
 static void display (void);	/* display the screen with refreshing rate */
 static void draw (void);
 static void winch_handler (int);
 
-static inline void init (void)
-{
-	NCPU = sysconf(_SC_NPROCESSORS_ONLN);
-
-	/* start curses mode */
-	initscr ();
-	curs_set (0);		/* make the cursor invisible */
-	raw ();			/* terminal raw mode */
-	keypad (stdscr, TRUE);	/* enable keypad */
-	noecho ();		/* no echo */
-
-	signal (SIGWINCH, winch_handler);
-}
-
-static inline void fin (void)
-{
-	/* end curses mode */
-	endwin ();
-	clean_cpu ();
-	clean_diskio ();
-}
-
-int main (void)
+int main (int argc, char **argv)
 {
 	int	c;
 
-	init ();
+	/* parse options */
+	while ((c = getopt (argc, argv, "hr:w:t:")) != -1) {
+		switch (c) {
+		case 'r':
+			maxrkbps = atof (optarg);
+			break;
+		case 'w':
+			maxwkbps = atof (optarg);
+			break;
+		case 't':
+			maxtotalkbps = atof (optarg);
+			break;
+		case 'h':
+		case '?':
+			fputs (usage, stderr);
+			return 0;
+		default:
+			return -1;
+		}
+	}
 
-	/* create a thread displaying the screen */
-	if (pthread_create (&display_thread, NULL, (void *(*)(void *)) &display, NULL) != 0)
-		error ("failed to create thread for display");
+	/* initialize monitor */
+	mon_init ();
 
 	while ((c = getch ()) != ERR) {
 		if (c == 'q' || c == '')
 			break;
 	}
 
-	fin ();
+	/* finalize monitor */
+	mon_fin ();
 
 	return 0;
 }
@@ -76,8 +82,14 @@ static void draw (void)
 	for (d = disks.head; d != NULL; d = d->next, r += 4) {
 		mvprintw (r, 6, "- %s", d->name);
 		mvprintw (r + 1, 10,  "read:  %.1lf kB/sec", d->rkbps);
+		if (maxrkbps)
+			printw (" (%.1lf%%)", d->rkbps / maxrkbps * 100.0);
 		mvprintw (r + 2, 10,  "write: %.1lf kB/sec", d->wkbps);
+		if (maxwkbps)
+			printw (" (%.1lf%%)", d->wkbps / maxwkbps * 100.0);
 		mvprintw (r + 3, 10, "total: %.1lf kB/sec", d->totalkbps);
+		if (maxtotalkbps)
+			printw (" (%.1lf%%)", d->totalkbps / maxtotalkbps * 100.0);
 	}
 
 	mvaddstr (max_r - 2, 2, "q: Quit");
@@ -103,10 +115,36 @@ static void winch_handler (int sig)
 
 void error (const char *s)
 {
-	fin ();
+	mon_fin ();
 	if (s)
 		fprintf (stderr, "[Error] %s\n", s);
 	exit (!!s);
+}
+
+static inline void mon_init (void)
+{
+	NCPU = sysconf(_SC_NPROCESSORS_ONLN);
+
+	/* start curses mode */
+	initscr ();
+	curs_set (0);		/* make the cursor invisible */
+	raw ();			/* terminal raw mode */
+	keypad (stdscr, TRUE);	/* enable keypad */
+	noecho ();		/* no echo */
+
+	signal (SIGWINCH, winch_handler);
+
+	/* create a thread displaying the screen */
+	if (pthread_create (&display_thread, NULL, (void *(*)(void *)) &display, NULL) != 0)
+		error ("failed to create thread for display");
+}
+
+static inline void mon_fin (void)
+{
+	/* end curses mode */
+	endwin ();
+	clean_cpu ();
+	clean_diskio ();
 }
 
 /* vim: set ts=8 sw=8 noet: */
