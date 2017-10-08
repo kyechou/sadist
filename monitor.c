@@ -62,20 +62,25 @@ int main (void)
 static void draw (void)
 {
 	struct disk_t	*d;
-	int		r = 1;
+	int		r = 1, max_r, max_c;
 
-	mvprintw (r, 2, "CPU: %5.1lf%%", cpu_usage); clrtoeol ();
+	clear ();
+	getmaxyx (stdscr, max_r, max_c);
+
+	mvprintw (r, 2, "CPU: %5.1lf%%", cpu_usage);
 	r += 2;
-	mvprintw (r, 2, "Memory: %5.1lf%% (%ld kB / %ld kB)", mem_usage, memused, memtotal); clrtoeol ();
+	mvprintw (r, 2, "Memory: %5.1lf%% (%ld kB / %ld kB)", mem_usage, memused, memtotal);
 	r += 2;
 	mvaddstr (r, 2, "Disk I/O:");
 	r += 2;
 	for (d = disks.head; d != NULL; d = d->next, r += 4) {
-		mvprintw (r, 6, "- %s", d->name); clrtoeol ();
-		mvprintw (r + 1, 10,  "read:  %.1lf kB/sec", d->rkbps); clrtoeol ();
-		mvprintw (r + 2, 10,  "write: %.1lf kB/sec", d->wkbps); clrtoeol ();
-		mvprintw (r + 3, 10, "total: %.1lf kB/sec", d->totalkbps); clrtoeol ();
+		mvprintw (r, 6, "- %s", d->name);
+		mvprintw (r + 1, 10,  "read:  %.1lf kB/sec", d->rkbps);
+		mvprintw (r + 2, 10,  "write: %.1lf kB/sec", d->wkbps);
+		mvprintw (r + 3, 10, "total: %.1lf kB/sec", d->totalkbps);
 	}
+
+	mvaddstr (max_r - 2, 2, "q: Quit");
 
 	refresh ();
 }
@@ -93,7 +98,6 @@ static void display (void)
 
 static void winch_handler (int sig)
 {
-	clear ();
 	draw ();
 }
 
