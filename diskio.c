@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
+#include <fcntl.h>
 #undef _GNU_SOURCE
 #include "workload.h"
 
 struct disks_t	disks = { NULL, NULL };
-static pthread_t	diskio_thread;
+static pthread_t	readdiskio_thread;
 static FILE		*fin;
 
 static void	threaded_read_diskio (void);	/* blocking; running with pthread */
@@ -18,20 +20,17 @@ static void	free_disks (void);
 
 void read_diskio (void)
 {
-	if (pthread_create (&diskio_thread, NULL, (void *(*)(void *)) &threaded_read_diskio, NULL) != 0)
+	if (pthread_create (&readdiskio_thread, NULL, (void *(*)(void *)) &threaded_read_diskio, NULL) != 0)
 		error ("failed to create thread for calculating diskio usage");
 }
 
-void clean_diskio (void)
+void readdiskio_fin (void)
 {
-	pthread_join (diskio_thread, NULL);
+	pthread_cancel (readdiskio_thread);
+	pthread_join (readdiskio_thread, NULL);
 	fclose (fin);
 	free_disks ();
-	/* temporarily ignore the new_disk */
-}
-
-void stress_diskio (void)
-{
+	/* temporarily ignore new_disk */
 }
 
 static void threaded_read_diskio (void)
@@ -112,6 +111,90 @@ static void free_disks (void)
 		free (d);
 		d = n;
 	}
+}
+
+static int fd;
+static void *buffer;
+static char filename[] = "tmp.XXXXXX";
+
+static void stressdiskio_fin (void)
+{
+	close (fd);
+	free (buffer);
+	if (access (filename, F_OK) != -1)
+		unlink (filename);
+}
+
+static double diff_in_useconds (const struct timespec *b, const struct timespec *e)
+{
+	struct timespec diff;
+
+	if (e->tv_nsec - b->tv_nsec < 0) {
+		diff.tv_sec  = e->tv_sec  - b->tv_sec - 1;
+		diff.tv_nsec = e->tv_nsec - b->tv_nsec + 1000000000;
+	} else {
+		diff.tv_sec  = e->tv_sec  - b->tv_sec;
+		diff.tv_nsec = e->tv_nsec - b->tv_nsec;
+	}
+
+	return (diff.tv_sec * 1000000.0 + diff.tv_nsec / 1000.0);
+}
+
+double stress_rate;	/* kB/sec */
+
+void stress_diskio (void)
+{
+	struct timespec start, end;
+	double remaining;	/* usec */
+	size_t nr_bytes;
+
+	fd = -1;
+	buffer = NULL;
+
+	/* push a cleanup function */
+	pthread_cleanup_push ((void (*)(void *)) &stressdiskio_fin, NULL);
+
+	while (1) {
+		/* calculate the rate and the number of bytes to write */
+		if (maxwkbps)
+			stress_rate = workload[M_DISKIO] / 100 * maxwkbps;
+		else if (maxtotalkbps)
+			stress_rate = workload[M_DISKIO] / 100 * maxtotalkbps;
+		else
+			stress_rate = 0;
+		nr_bytes = stress_rate * DISK_HOG_GRAN / 1000000.0 * 1024;
+
+		/* time start */
+		clock_gettime (CLOCK_REALTIME, &start);
+
+		/* write 'nr_bytes' bytes to disk */
+		if (nr_bytes) {
+			/* create file at PWD */
+			for (int i = 4; i < 10; ++i)
+				filename[i] = 'X';
+			if ((fd = mkostemp (filename, O_SYNC)) < 0)
+				error ("failed to open file for disk I/O");
+			/* allocate memory buffer */
+			if ((buffer = realloc (buffer, nr_bytes)) == NULL)
+				error ("failed to allocate memory buffer for disk I/O");
+			/* write to the file */
+			if (write (fd, buffer, nr_bytes) < 0)
+				error ("failed to write to the file");
+			/* close and remove the file */
+			close (fd);
+			unlink (filename);
+		}
+
+		/* time end */
+		clock_gettime (CLOCK_REALTIME, &end);
+
+		/* sleep through the remaining time */
+		if ((remaining = DISK_HOG_GRAN - diff_in_useconds (&start, &end)) > 0)
+			usleep (remaining);
+	}
+
+	/* pop a cleanup function */
+	pthread_cleanup_pop (0);
 }
 
 /* vim: set ts=8 sw=8 noet: */

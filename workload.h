@@ -15,6 +15,9 @@
 #define NR_MODE		3
 
 extern double workload[NR_MODE];
+extern double maxrkbps;
+extern double maxwkbps;
+extern double maxtotalkbps;
 
 void error (const char *);	/* report error and quit */
 

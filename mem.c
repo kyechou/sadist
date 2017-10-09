@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
 #include "workload.h"
 
 unsigned long	memtotal;	/* MemTotal */
@@ -53,8 +56,39 @@ void read_mem (void)
 	mem_usage = (double)memused / (double)memtotal * 100.0;
 }
 
+static void	*mem;
+
+static void stressmem_fin (void)
+{
+	free (mem);
+}
+
 void stress_mem (void)
 {
+	double	percent = 0;
+	size_t	size, i;
+
+	mem = NULL;
+
+	/* push a cleanup function */
+	pthread_cleanup_push ((void (*)(void *)) &stressmem_fin, NULL);
+
+	while (1) {
+		if (percent == workload[M_MEM]) {
+			usleep (MEM_HOG_INT);
+		} else {
+			percent = workload[M_MEM];
+			size = percent / 100 * memtotal * 1024;
+			if ((mem = realloc (mem, size)) == NULL && size != 0)
+				error ("failed to allocate memory");
+			/* write memory */
+			for (i = 0; i < size; i += 4096)
+				*(char *)(mem + i) = 1;
+		}
+	}
+
+	/* pop a cleanup function */
+	pthread_cleanup_pop (0);
 }
 
 /* vim: set ts=8 sw=8 noet: */

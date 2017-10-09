@@ -6,9 +6,8 @@
 
 extern double cpu_usage;	/* (working time) / (working time + idle time) * 100 */
 
-void cpu_init (void);
-void cpu_fin (void);
 void read_cpu (void);
+void readcpu_fin (void);
 void stress_cpu (void);
 
 #endif

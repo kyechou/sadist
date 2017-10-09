@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
@@ -10,17 +11,7 @@ double cpu_usage;	/* (working time) / (working time + idle time) * 100 */
 static int NR_CPU;
 static FILE *fin;
 static pthread_t readcpu_thread;
-
-void cpu_init (void)
-{
-	NR_CPU = sysconf (_SC_NPROCESSORS_ONLN);
-}
-
-void cpu_fin (void)
-{
-	pthread_join (readcpu_thread, NULL);
-	fclose (fin);
-}
+static pthread_t *stresscpu_threads;
 
 static void threaded_read_cpu (void)
 {
@@ -46,6 +37,22 @@ void read_cpu (void)
 		error ("failed to create thread for calculating cpu usage");
 }
 
+void readcpu_fin (void)
+{
+	pthread_cancel (readcpu_thread);
+	pthread_join (readcpu_thread, NULL);
+	fclose (fin);
+}
+
+static void stresscpu_fin (void)
+{
+	for (int i = 0; i < NR_CPU; ++i) {
+		pthread_cancel (stresscpu_threads[i]);
+		pthread_join (stresscpu_threads[i], NULL);
+	}
+	free (stresscpu_threads);
+}
+
 static void threaded_stress_cpu (void)
 {
 	while (1);
@@ -60,20 +67,25 @@ void stress_cpu (void)
 {
 	int i;
 	cpu_set_t cpuset;
-	pthread_t threads[NR_CPU];
+
+	NR_CPU = sysconf (_SC_NPROCESSORS_ONLN);
+	stresscpu_threads = malloc (sizeof (pthread_t) * NR_CPU);
 
 	/* install the signal handler */
 	signal (SIGUSR1, &rest);
 
 	/* create threads and set affinity */
 	for (i = 0; i < NR_CPU; ++i) {
-		if (pthread_create (&threads[i], NULL, (void *(*)(void *)) &threaded_stress_cpu, NULL) != 0)
+		if (pthread_create (&stresscpu_threads[i], NULL, (void *(*)(void *)) &threaded_stress_cpu, NULL) != 0)
 			error ("failed to create thread for cpu stress worker");
 		CPU_ZERO (&cpuset);
 		CPU_SET (i, &cpuset);
-		if (pthread_setaffinity_np (threads[i], sizeof (cpu_set_t), &cpuset) != 0)
+		if (pthread_setaffinity_np (stresscpu_threads[i], sizeof (cpu_set_t), &cpuset) != 0)
 			error ("failed to set affinity for cpu stress worker");
 	}
+
+	/* push a cleanup function */
+	pthread_cleanup_push ((void (*)(void *)) &stresscpu_fin, NULL);
 
 	/* control the stress timing */
 	while (1) {
@@ -81,10 +93,13 @@ void stress_cpu (void)
 		usleep (workload[M_CPU] / 100 * CPU_HOG_GRAN);
 		/* send signals to threads */
 		for (i = 0; i < NR_CPU; ++i)
-			pthread_kill (threads[i], SIGUSR1);
+			pthread_kill (stresscpu_threads[i], SIGUSR1);
 		/* rest time */
 		usleep ((100.0 - workload[M_CPU]) / 100 * CPU_HOG_GRAN);
 	}
+
+	/* pop a cleanup function */
+	pthread_cleanup_pop (0);
 }
 
 /* vim: set ts=8 sw=8 noet: */

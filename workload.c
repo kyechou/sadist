@@ -21,17 +21,22 @@ static const char usage[] =
 "        -m      the percentage of additional workload on memory (0-100)\n"
 "        -d      the percentage of additional workload on disk (0-100)\n\n";
 
-/* maxima of disk IO rate */
-static double	maxrkbps;
-static double	maxwkbps;
-static double	maxtotalkbps;
 /* UI input mode; constants defined in workload.h */
-static int	mode;
+static int mode;
 /* additional workload target */
-double		workload[NR_MODE];
+double	workload[NR_MODE];
+/* maxima of disk IO rate */
+double	maxrkbps;
+double	maxwkbps;
+double	maxtotalkbps;
+/* workload threads */
+static pthread_t threads[NR_MODE];
+/* monitor thread */
+static pthread_t monitor_thread;
 
 static inline void mon_init (void);
 static inline void wl_init (void);
+static inline void wl_fin (void);
 static inline void mon_fin (void);
 static inline int parse_args (int, char **);
 static void monitor (void);
@@ -48,7 +53,6 @@ int main (int argc, char **argv)
 
 	/* initialize monitor */
 	mon_init ();
-
 	/* initialize workload */
 	wl_init ();
 
@@ -95,24 +99,12 @@ int main (int argc, char **argv)
 		draw ();
 	}
 
+	/* finalize workload */
+	wl_fin ();
 	/* finalize monitor */
 	mon_fin ();
 
 	return 0;
-}
-
-static inline void wl_init (void)
-{
-	pthread_t cpu_thread, mem_thread, diskio_thread;
-
-	if (pthread_create (&cpu_thread, NULL, (void *(*)(void *)) &stress_cpu, NULL) != 0)
-		error ("failed to create thread for cpu stress");
-
-	if (pthread_create (&mem_thread, NULL, (void *(*)(void *)) &stress_mem, NULL) != 0)
-		error ("failed to create thread for mem stress");
-
-	if (pthread_create (&diskio_thread, NULL, (void *(*)(void *)) &stress_diskio, NULL) != 0)
-		error ("failed to create thread for diskio stress");
 }
 
 static void input (double delta)
@@ -136,7 +128,7 @@ static void draw (void)
 	clear ();
 	getmaxyx (stdscr, max_r, max_c);
 
-	mvaddstr (r, 1, "---------------------------------------------------------");
+	mvaddstr (r, 1, "------------------------------------------------------------------------");
 	r += 2;
 	mvprintw (r, 2, "CPU: %5.1lf%%", cpu_usage);
 	r += 2;
@@ -157,17 +149,24 @@ static void draw (void)
 			printw (" (%.1lf%%)", d->totalkbps / maxtotalkbps * 100.0);
 	}
 	r += 2;
-	mvaddstr (r, 1, "---------------------------------------------------------");
+	mvaddstr (r, 1, "------------------------------------------------------------------------");
 	r += 2;
 	mvprintw (r, 2, "CPU workload:      +%.1lf%%", workload[M_CPU]);
 	r += 2;
 	mvprintw (r, 2, "Memory workload:   +%.1lf%%", workload[M_MEM]);
+	printw (" (%.1lf MB; %.1lf KB; %.1lf bytes)",
+		workload[M_MEM] / 100 * memtotal / 1024,
+		workload[M_MEM] / 100 * memtotal,
+		workload[M_MEM] / 100 * memtotal * 1024);
 	r += 2;
 	mvprintw (r, 2, "Disk I/O workload: +%.1lf%%", workload[M_DISKIO]);
+	printw (" (%.1lf MB/s; %.1lf KB/s; %.1lf bytes/s)",
+		stress_rate / 1024.0, stress_rate, stress_rate * 1024.0);
 	r += 2;
-	mvaddstr (r, 1, "---------------------------------------------------------");
+	mvaddstr (r, 1, "------------------------------------------------------------------------");
 
-	mvaddstr (max_r - 2, 2, "q: Quit");
+	mvaddstr (max_r - 4, 1, "------------------------------------------------------------------------");
+	mvaddstr (max_r - 3, 2, "q: Quit");
 	switch (mode) {
 	case M_NORMAL:
 		addstr ("   c: CPU   m: Memory   d: Disk");
@@ -182,6 +181,7 @@ static void draw (void)
 		addstr ("   Esc: Back   h: -10%   j: -1%   k: +1%   l: +10%   0: 0%");
 		break;
 	}
+	mvaddstr (max_r - 2, 1, "------------------------------------------------------------------------");
 
 	refresh ();
 }
@@ -248,6 +248,7 @@ static void winch_handler (int sig)
 
 void error (const char *s)
 {
+	wl_fin ();
 	mon_fin ();
 	if (s)
 		fprintf (stderr, "[Error] %s\n", s);
@@ -256,12 +257,7 @@ void error (const char *s)
 
 static inline void mon_init (void)
 {
-	pthread_t	monitor_thread;
-
 	mode = M_NORMAL;
-
-	/* initialization */
-	cpu_init ();
 
 	/* set ESCDELAY to make it respond immediately */
 	if (putenv ("ESCDELAY=10") != 0)
@@ -281,12 +277,37 @@ static inline void mon_init (void)
 		error ("failed to create thread for monitoring");
 }
 
+static inline void wl_init (void)
+{
+	if (pthread_create (&threads[M_CPU], NULL, (void *(*)(void *)) &stress_cpu, NULL) != 0)
+		error ("failed to create thread for cpu stress");
+
+	if (pthread_create (&threads[M_MEM], NULL, (void *(*)(void *)) &stress_mem, NULL) != 0)
+		error ("failed to create thread for mem stress");
+
+	if (pthread_create (&threads[M_DISKIO], NULL, (void *(*)(void *)) &stress_diskio, NULL) != 0)
+		error ("failed to create thread for diskio stress");
+}
+
+static inline void wl_fin (void)
+{
+	for (int i = 0; i < NR_MODE; ++i)
+		pthread_cancel (threads[i]);
+	for (int i = 0; i < NR_MODE; ++i)
+		pthread_join (threads[i], NULL);
+}
+
 static inline void mon_fin (void)
 {
+	/* stop the monitor thread */
+	pthread_cancel (monitor_thread);
+	pthread_join (monitor_thread, NULL);
+
+	readcpu_fin ();
+	readdiskio_fin ();
+
 	/* end curses mode */
 	endwin ();
-	cpu_fin ();
-	clean_diskio ();
 }
 
 /* vim: set ts=8 sw=8 noet: */

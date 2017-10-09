@@ -1,9 +1,10 @@
 #ifndef __DISKIO_H
 #define __DISKIO_H
 
-#define DISKIO_INT	1000000	/* wait 1 sec to read disk usage */
+#define DISKIO_INT	1000000	/* (usec) wait 1 sec to read disk usage */
 #define DISKSTATS_BUF	1024	/* buffer size when reading /proc/diskstats */
 #define DISKNAME_SIZE	32	/* maximum length of the disk name */
+#define DISK_HOG_GRAN	1000000	/* (usec) disk hog granularity: 1 sec */
 
 struct disk_t {
 	int		major, minor;
@@ -18,9 +19,10 @@ struct disks_t {
 };
 
 extern struct disks_t	disks;
+extern double stress_rate;	/* kB/sec */
 
 void read_diskio (void);
-void clean_diskio (void);
+void readdiskio_fin (void);
 void stress_diskio (void);
 
 #endif
