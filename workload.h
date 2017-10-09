@@ -12,6 +12,9 @@
 #define M_CPU		0
 #define M_MEM		1
 #define M_DISKIO	2
+#define NR_MODE		3
+
+extern double workload[NR_MODE];
 
 void error (const char *);	/* report error and quit */
 

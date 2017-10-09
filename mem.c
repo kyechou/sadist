@@ -53,4 +53,8 @@ void read_mem (void)
 	mem_usage = (double)memused / (double)memtotal * 100.0;
 }
 
+void stress_mem (void)
+{
+}
+
 /* vim: set ts=8 sw=8 noet: */

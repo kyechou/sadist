@@ -1,12 +1,12 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ncurses.h>
-#define _GNU_SOURCE
 #include <pthread.h>
-#undef _GNU_SOURCE
 #include <signal.h>
 #include <ctype.h>
+#undef _GNU_SOURCE
 #include "workload.h"
 
 static const char usage[] =
@@ -21,15 +21,20 @@ static const char usage[] =
 "        -m      the percentage of additional workload on memory (0-100)\n"
 "        -d      the percentage of additional workload on disk (0-100)\n\n";
 
-pthread_t	display_thread;
-double		maxrkbps, maxwkbps, maxtotalkbps;
-int		mode;
-double		workload[3];
+/* maxima of disk IO rate */
+static double	maxrkbps;
+static double	maxwkbps;
+static double	maxtotalkbps;
+/* UI input mode; constants defined in workload.h */
+static int	mode;
+/* additional workload target */
+double		workload[NR_MODE];
 
 static inline void mon_init (void);
+static inline void wl_init (void);
 static inline void mon_fin (void);
 static inline int parse_args (int, char **);
-static void display (void);	/* display the screen with refreshing rate */
+static void monitor (void);
 static void draw (void);
 static void winch_handler (int);
 static void input (double);
@@ -43,6 +48,9 @@ int main (int argc, char **argv)
 
 	/* initialize monitor */
 	mon_init ();
+
+	/* initialize workload */
+	wl_init ();
 
 	while ((c = getch ()) != ERR) {
 		c = tolower (c);
@@ -91,6 +99,20 @@ int main (int argc, char **argv)
 	mon_fin ();
 
 	return 0;
+}
+
+static inline void wl_init (void)
+{
+	pthread_t cpu_thread, mem_thread, diskio_thread;
+
+	if (pthread_create (&cpu_thread, NULL, (void *(*)(void *)) &stress_cpu, NULL) != 0)
+		error ("failed to create thread for cpu stress");
+
+	if (pthread_create (&mem_thread, NULL, (void *(*)(void *)) &stress_mem, NULL) != 0)
+		error ("failed to create thread for mem stress");
+
+	if (pthread_create (&diskio_thread, NULL, (void *(*)(void *)) &stress_diskio, NULL) != 0)
+		error ("failed to create thread for diskio stress");
 }
 
 static void input (double delta)
@@ -164,7 +186,7 @@ static void draw (void)
 	refresh ();
 }
 
-static void display (void)
+static void monitor (void)
 {
 	while (1) {
 		read_cpu ();
@@ -234,7 +256,12 @@ void error (const char *s)
 
 static inline void mon_init (void)
 {
+	pthread_t	monitor_thread;
+
 	mode = M_NORMAL;
+
+	/* initialization */
+	cpu_init ();
 
 	/* set ESCDELAY to make it respond immediately */
 	if (putenv ("ESCDELAY=10") != 0)
@@ -245,20 +272,20 @@ static inline void mon_init (void)
 	curs_set (0);		/* make the cursor invisible */
 	raw ();			/* terminal raw mode */
 	keypad (stdscr, TRUE);	/* enable keypad */
-	noecho ();		/* no echo */
+	noecho ();		/* no echoing */
 
 	signal (SIGWINCH, winch_handler);
 
-	/* create a thread displaying the screen */
-	if (pthread_create (&display_thread, NULL, (void *(*)(void *)) &display, NULL) != 0)
-		error ("failed to create thread for display");
+	/* create a thread for monitoring */
+	if (pthread_create (&monitor_thread, NULL, (void *(*)(void *)) &monitor, NULL) != 0)
+		error ("failed to create thread for monitoring");
 }
 
 static inline void mon_fin (void)
 {
 	/* end curses mode */
 	endwin ();
-	clean_cpu ();
+	cpu_fin ();
 	clean_diskio ();
 }
 

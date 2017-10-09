@@ -1,8 +1,8 @@
 # Makefile for Cloud Computing lab 1-2
 # author: kyechou
 
-CFLAGS  += -O2 -lncurses -lpthread
-LDFLAGS += -Wl,--gc-sections -lncurses -lpthread
+CFLAGS  += -O2 -lncurses -lpthread -pthread
+LDFLAGS += -Wl,--gc-sections -lncurses -lpthread -pthread
 OBJS = workload.o \
        cpu.o \
        mem.o \

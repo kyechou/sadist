@@ -6,6 +6,7 @@ extern unsigned long	memused;	/* memtotal - memfree - membuffers - memcached - m
 extern double		mem_usage;	/* memused / memtotal * 100 */
 
 void read_mem (void);
+void stress_mem (void);
 
 #endif
 

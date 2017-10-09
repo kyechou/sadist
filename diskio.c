@@ -1,7 +1,7 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#define _GNU_SOURCE
 #include <pthread.h>
 #undef _GNU_SOURCE
 #include "workload.h"
@@ -28,6 +28,10 @@ void clean_diskio (void)
 	fclose (fin);
 	free_disks ();
 	/* temporarily ignore the new_disk */
+}
+
+void stress_diskio (void)
+{
 }
 
 static void threaded_read_diskio (void)

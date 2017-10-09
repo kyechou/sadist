@@ -19,8 +19,9 @@ struct disks_t {
 
 extern struct disks_t	disks;
 
-void	read_diskio (void);
-void	clean_diskio (void);
+void read_diskio (void);
+void clean_diskio (void);
+void stress_diskio (void);
 
 #endif
 
