@@ -89,13 +89,11 @@ void stress_cpu (void)
 
 	/* control the stress timing */
 	while (1) {
-		/* work time */
-		usleep (workload[M_CPU] / 100 * CPU_HOG_GRAN);
 		/* send signals to threads */
 		for (i = 0; i < NR_CPU; ++i)
 			pthread_kill (stresscpu_threads[i], SIGUSR1);
-		/* rest time */
-		usleep ((100.0 - workload[M_CPU]) / 100 * CPU_HOG_GRAN);
+
+		usleep (CPU_HOG_GRAN);
 	}
 
 	/* pop a cleanup function */
