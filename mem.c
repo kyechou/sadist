@@ -57,6 +57,7 @@ void read_mem (void)
 }
 
 static void	*mem;
+size_t		memsize;	/* size of the allocated memory area */
 
 static void stressmem_fin (void)
 {
@@ -66,23 +67,23 @@ static void stressmem_fin (void)
 void stress_mem (void)
 {
 	double	percent = 0;
-	size_t	size, i;
 
 	mem = NULL;
 
 	/* push a cleanup function */
 	pthread_cleanup_push ((void (*)(void *)) &stressmem_fin, NULL);
 
+
 	while (1) {
-		if (percent == workload[M_MEM]) {
+		if (percent == workload[M_MEM] || memtotal == 0) {
 			usleep (MEM_HOG_INT);
 		} else {
 			percent = workload[M_MEM];
-			size = percent / 100 * memtotal * 1024;
-			if ((mem = realloc (mem, size)) == NULL && size != 0)
+			memsize = percent / 100 * memtotal * 1024;
+			if ((mem = realloc (mem, memsize)) == NULL && memsize != 0)
 				error ("failed to allocate memory");
 			/* write memory */
-			for (i = 0; i < size; i += 4096)
+			for (int i = 0; i < memsize; i += 4096)
 				*(char *)(mem + i) = 1;
 		}
 	}

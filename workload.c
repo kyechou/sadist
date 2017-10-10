@@ -155,9 +155,9 @@ static void draw (void)
 	r += 2;
 	mvprintw (r, 2, "Memory workload:   +%.1lf%%", workload[M_MEM]);
 	printw (" (%.1lf MB; %.1lf KB; %.1lf bytes)",
-		workload[M_MEM] / 100 * memtotal / 1024,
-		workload[M_MEM] / 100 * memtotal,
-		workload[M_MEM] / 100 * memtotal * 1024);
+		memsize / 1024.0 / 1024.0,
+		memsize / 1024.0,
+		memsize);
 	r += 2;
 	mvprintw (r, 2, "Disk I/O workload: +%.1lf%%", workload[M_DISKIO]);
 	printw (" (%.1lf MB/s; %.1lf KB/s; %.1lf bytes/s)",
@@ -275,36 +275,39 @@ static inline void mon_init (void)
 	/* create a thread for monitoring */
 	if (pthread_create (&monitor_thread, NULL, (void *(*)(void *)) &monitor, NULL) != 0)
 		error ("failed to create thread for monitoring");
+	pthread_detach (monitor_thread);
 }
 
 static inline void wl_init (void)
 {
 	if (pthread_create (&threads[M_CPU], NULL, (void *(*)(void *)) &stress_cpu, NULL) != 0)
 		error ("failed to create thread for cpu stress");
+	pthread_detach (threads[M_CPU]);
 
 	if (pthread_create (&threads[M_MEM], NULL, (void *(*)(void *)) &stress_mem, NULL) != 0)
 		error ("failed to create thread for mem stress");
+	pthread_detach (threads[M_MEM]);
 
 	if (pthread_create (&threads[M_DISKIO], NULL, (void *(*)(void *)) &stress_diskio, NULL) != 0)
 		error ("failed to create thread for diskio stress");
+	pthread_detach (threads[M_DISKIO]);
 }
 
 static inline void wl_fin (void)
 {
-	for (int i = 0; i < NR_MODE; ++i)
+	for (int i = 0; i < NR_MODE; ++i) {
 		pthread_cancel (threads[i]);
-	for (int i = 0; i < NR_MODE; ++i)
 		pthread_join (threads[i], NULL);
+	}
 }
 
 static inline void mon_fin (void)
 {
 	/* stop the monitor thread */
 	pthread_cancel (monitor_thread);
-	pthread_join (monitor_thread, NULL);
-
 	readcpu_fin ();
 	readdiskio_fin ();
+	pthread_join (monitor_thread, NULL);
 
 	/* end curses mode */
 	endwin ();

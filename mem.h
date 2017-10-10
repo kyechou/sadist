@@ -6,6 +6,7 @@
 extern unsigned long	memtotal;	/* MemTotal */
 extern unsigned long	memused;	/* memtotal - memfree - membuffers - memcached - memsreclaim + memshmem */
 extern double		mem_usage;	/* memused / memtotal * 100 */
+extern size_t		memsize;	/* size of the allocated memory area */
 
 void read_mem (void);
 void stress_mem (void);

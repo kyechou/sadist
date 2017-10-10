@@ -17,7 +17,7 @@ workload: $(OBJS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 run: all
-	@./workload -t 105481.40
+	@./workload -t 105481.40 -c 50 -m 50 -d 50
 
 clean: tags
 	-@rm -rf $(OBJS) workload

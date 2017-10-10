@@ -35,6 +35,7 @@ void read_cpu (void)
 {
 	if (pthread_create (&readcpu_thread, NULL, (void *(*)(void *)) &threaded_read_cpu, NULL) != 0)
 		error ("failed to create thread for calculating cpu usage");
+	pthread_detach (readcpu_thread);
 }
 
 void readcpu_fin (void)
@@ -78,6 +79,7 @@ void stress_cpu (void)
 	for (i = 0; i < NR_CPU; ++i) {
 		if (pthread_create (&stresscpu_threads[i], NULL, (void *(*)(void *)) &threaded_stress_cpu, NULL) != 0)
 			error ("failed to create thread for cpu stress worker");
+		pthread_detach (stresscpu_threads[i]);
 		CPU_ZERO (&cpuset);
 		CPU_SET (i, &cpuset);
 		if (pthread_setaffinity_np (stresscpu_threads[i], sizeof (cpu_set_t), &cpuset) != 0)

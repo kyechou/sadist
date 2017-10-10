@@ -22,6 +22,7 @@ void read_diskio (void)
 {
 	if (pthread_create (&readdiskio_thread, NULL, (void *(*)(void *)) &threaded_read_diskio, NULL) != 0)
 		error ("failed to create thread for calculating diskio usage");
+	pthread_detach (readdiskio_thread);
 }
 
 void readdiskio_fin (void)
