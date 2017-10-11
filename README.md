@@ -99,5 +99,5 @@ the workload percentage with the maximum disk I/O rate, and then derives the
 number of bytes it is going to write by multiplying the stressing rate with
 DISK_HOG_GRAN, which is defined in the header `diskio.h`. Hence, it writes the
 number of bytes to a file on the disk, and sleeps through the remaining time,
-i.e., DISK_HOG_GRAN - time used for writing.
+where remaining time = (DISK_HOG_GRAN - time used for writing).
 
