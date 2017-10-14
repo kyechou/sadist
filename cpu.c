@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <signal.h>
 #undef _GNU_SOURCE
-#include "workload.h"
+#include "sadist.h"
 
 double cpu_usage;	/* (working time) / (working time + idle time) * 100 */
 static int NR_CPU;

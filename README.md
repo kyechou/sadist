@@ -1,21 +1,17 @@
-# Homework 1-2-1: CPU, Mem, Disk I/O Workload
-
-2017 Fall NCTU Cloud Computing Systems and Applications, lectured by Prof. Chen,
-Tien-Fu.
+# Sadist: a workload generating tool for stress test
 
 ## Description
 
-This workload generating tool is written in C, with ncurses and pthread
-libraries. Before compiling, please make sure that `glibc` and `ncurses`
-packages has been installed on your system. To compile the source, run `make` in
-the command line. You can then launch the tool by `make run`, or by executing
-the `./workload` command.
+Sadist is written in C, with ncurses and pthread libraries. Before compiling,
+please make sure that `glibc` and `ncurses` packages has been installed on your
+system. To compile the source, run `make` in the command line. You can then
+launch the tool by `make run`, or by executing the `./sadist` command.
 
-The workload generating tool takes seven optional arguments. The `-h` option can
-be used to show the following message:
+It takes seven optional arguments. The `-h` option can be used to show the
+following message:
 
 ```
-Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]
+Usage: ./sadist [-h] [-r max_read] [-w max_write] [-t max_total]
                   [-c cpu_workload] [-m mem_workload] [-d disk_IO_workload]
 
 Options:

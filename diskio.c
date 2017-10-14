@@ -6,7 +6,7 @@
 #include <time.h>
 #include <fcntl.h>
 #undef _GNU_SOURCE
-#include "workload.h"
+#include "sadist.h"
 
 struct disks_t	disks = { NULL, NULL };
 static pthread_t	readdiskio_thread;

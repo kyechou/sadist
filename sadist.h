@@ -1,5 +1,5 @@
-#ifndef __WORKLOAD_H
-#define __WORKLOAD_H
+#ifndef __SADIST_H
+#define __SADIST_H
 
 #include "cpu.h"
 #include "mem.h"

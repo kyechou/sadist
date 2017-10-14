@@ -7,10 +7,10 @@
 #include <signal.h>
 #include <ctype.h>
 #undef _GNU_SOURCE
-#include "workload.h"
+#include "sadist.h"
 
 static const char usage[] =
-"Usage: ./workload [-h] [-r max_read] [-w max_write] [-t max_total]\n"
+"Usage: ./sadist [-h] [-r max_read] [-w max_write] [-t max_total]\n"
 "                  [-c cpu_workload] [-m mem_workload] [-d disk_IO_workload]\n\n"
 "Options:\n"
 "        -h      show this message\n"

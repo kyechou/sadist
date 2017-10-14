@@ -3,24 +3,24 @@
 
 CFLAGS  += -O2 -lncurses -lpthread -pthread
 LDFLAGS += -Wl,--gc-sections -lncurses -lpthread -pthread
-OBJS = workload.o \
+OBJS = sadist.o \
        cpu.o \
        mem.o \
        diskio.o
 
-all: tags workload
+all: tags sadist
 
-workload: $(OBJS)
+sadist: $(OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 run: all
-	@./workload -t 105481.40 -c 50 -m 50 -d 50
+	@./sadist -t 105481.40
 
 clean: tags
-	-@rm -rf $(OBJS) workload
+	-@rm -rf $(OBJS) sadist
 
 tags:
 	-@ctags -R

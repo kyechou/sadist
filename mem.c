@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "workload.h"
+#include "sadist.h"
 
 unsigned long	memtotal;	/* MemTotal */
 unsigned long	memused;	/* memtotal - memfree - membuffers - memcached - memsreclaim + memshmem */
