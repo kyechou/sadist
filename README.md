@@ -54,7 +54,8 @@ program.
 ```
 
 The `threaded_read_cpu` and the `threaded_read_diskio` threads are created on
-each call, while all the other threads are persistent until the program exits.
+each call, and exit when the calculations are done, while all the other threads
+are persistent until the program exits.
 
 The `main` thread is responsible for the user input and reacts correspondingly.
 The `monitor` thread reads the statistics and refresh the screen display for a
