@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,7 +5,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <ctype.h>
-#undef _GNU_SOURCE
 #include "sadist.h"
 
 static const char usage[] =

@@ -1,8 +1,8 @@
 # Makefile for Cloud Computing lab 1-2
 # author: kyechou
 
-CFLAGS  += -O2 -lncurses -lpthread -pthread
-LDFLAGS += -Wl,--gc-sections -lncurses -lpthread -pthread
+CFLAGS  += -O2 -lpthread -pthread $(shell pkg-config --cflags ncurses)
+LDFLAGS += -Wl,--gc-sections -lpthread -pthread $(shell pkg-config --libs ncurses)
 OBJS = sadist.o \
        cpu.o \
        mem.o \

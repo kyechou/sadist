@@ -1,11 +1,9 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <time.h>
 #include <fcntl.h>
-#undef _GNU_SOURCE
 #include "sadist.h"
 
 struct disks_t	disks = { NULL, NULL };
